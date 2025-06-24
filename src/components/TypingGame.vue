@@ -1,22 +1,53 @@
 <template>
-  <div class="game-container">
-    <div class="timer">倒计时：{{ timeLeft }} 秒</div>
-    <div class="letter-container">
-      <span
-        v-for="(letter, index) in letters"
-        :key="index"
-        :class="{ correct: index < correctIndex, current: index === correctIndex }"
+  <div class="app-container">
+    <!-- 顶部栏 -->
+    <div class="top-bar">
+      <!-- Logo -->
+      <div class="logo-area">
+        <img src="logo.png" alt="Logo" class="logo" />
+        <span class="logo-text">TOURFLY</span>
+      </div>
+
+      <!-- 搜索+排序+标签 -->
+      <div class="control-area">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索"
+          class="search-input"
+        />
+        <select v-model="sortOption" class="sort-select">
+          <option value="created">创建时间</option>
+          <option value="name">图片名称</option>
+        </select>
+        <button @click="toggleTags" class="tag-button">
+          标签选择器
+        </button>
+      </div>
+    </div>
+
+    <!-- 标签列表 -->
+    <div v-if="showTags" class="tag-list">
+      <button
+        v-for="tag in tags"
+        :key="tag"
+        @click="toggleTag(tag)"
+        :class="['tag', { selected: selectedTags.includes(tag) }]"
       >
-        {{ letter }}
-      </span>
+        {{ tag }}
+      </button>
     </div>
-    <div class="stats">
-      <p>准确率：{{ accuracy }}%</p>
-      <p>错误个数：{{ errors }}</p>
-      <p>输入总数：{{ totalTyped }}</p>
+
+    <!-- 图片展示区 -->
+    <div class="image-grid">
+      <div
+        v-for="(image, index) in filteredImages.slice(0, 12)"
+        :key="index"
+        class="image-item"
+      >
+        <img :src="image.src" :alt="image.name" />
+      </div>
     </div>
-    <div v-if="gameOver" class="game-over">游戏结束</div>
-    <button v-if="gameOver" class="restart-button" @click="restartGame">再来一局</button>
   </div>
 </template>
 
@@ -24,116 +55,175 @@
 export default {
   data() {
     return {
-      timeLeft: 10,
-      letters: [],
-      correctIndex: 0,
-      errors: 0,
-      totalTyped: 0,
-      correctTyped: 0,
-      gameOver: false,
-    };
+      searchQuery: '',
+      sortOption: 'created',
+      showTags: true,
+      selectedTags: [],
+      tags: [
+        '动植物', '印花', 'T恤图案', '人物', 'Logo', '时尚设计', '纹样', '摄影',
+        '风景', '头像', '商品', '海报', '游戏', '3D', '科幻', '艺术',
+        '建筑', '卡通', '插画', '漫画'
+      ],
+      images: [
+        { src: require('../assets/images/image1.jpg'), name: '幻想森林', tags: ['动植物', '插画'], created: '2023-12-01' },
+        { src:  require('../assets/images/image2.jpg'), name: '未来建筑', tags: ['建筑', '科幻'], created: '2023-11-15' },
+        { src:  require('../assets/images/image3.jpg'), name: '搞怪水果', tags: ['3D', '商品'], created: '2024-01-10' },
+        { src: require('../assets/images/image4.jpg'), name: '女战士', tags: ['人物', '时尚设计'], created: '2023-10-20' },
+        { src: require('../assets/images/image5.jpg'), name: '动漫女孩', tags: ['卡通', '头像'], created: '2023-09-05' },
+        { src: require('../assets/images/image6.jpg'), name: '梦幻狐狸', tags: ['插画', '动植物'], created: '2023-12-25' },
+        // { src: 'img7.jpg', name: '线条艺术', tags: ['艺术', '印花'], created: '2024-02-18' },
+        // { src: 'img8.jpg', name: '机械昆虫', tags: ['科幻', '3D'], created: '2024-01-02' },
+        // { src: 'img9.jpg', name: '时尚女郎', tags: ['人物', '时尚设计'], created: '2024-03-08' },
+        // { src: 'img10.jpg', name: '未来大厅', tags: ['建筑'], created: '2023-08-11' },
+        // { src: 'img11.jpg', name: '发光动物', tags: ['动植物'], created: '2023-07-22' },
+        // { src: 'img12.jpg', name: '动态海报', tags: ['海报', '艺术'], created: '2023-06-30' },
+      ]
+    }
   },
   computed: {
-    accuracy() {
-      return this.totalTyped > 0 ? Math.round((this.correctTyped / this.totalTyped) * 100) : 0;
-    },
+  filteredImages() {
+  let result = this.images;
+
+  // ✅ 标签过滤（包含任意一个选中的标签）
+  if (this.selectedTags.length > 0) {
+    result = result.filter(image =>
+      image.tags.some(tag => this.selectedTags.includes(tag))
+    );
+  }
+
+  // 搜索过滤
+  if (this.searchQuery.trim() !== '') {
+    const keyword = this.searchQuery.trim().toLowerCase();
+    result = result.filter(image =>
+      image.name.toLowerCase().includes(keyword)
+    );
+  }
+
+  // 排序
+  if (this.sortOption === 'created') {
+    result = result.sort((a, b) => new Date(b.created) - new Date(a.created));
+  } else if (this.sortOption === 'name') {
+    result = result.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return result;
+}
   },
   methods: {
-    startGame() {
-      this.generateLetters();
-      this.timer = setInterval(() => {
-        if (this.timeLeft > 0) {
-          this.timeLeft -= 1;
-        } else {
-          clearInterval(this.timer);
-          this.gameOver = true;
-        }
-      }, 1000);
+    toggleTags() {
+      this.showTags = !this.showTags
     },
-    generateLetters() {
-      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      this.letters = Array.from({ length: 10 }, () => letters[Math.floor(Math.random() * letters.length)]);
-      this.correctIndex = 0;
-    },
-    handleKeyInput(event) {
-      if (!this.gameOver && this.correctIndex < this.letters.length) {
-        const inputLetter = event.key.toUpperCase();
-        const correctLetter = this.letters[this.correctIndex];
-
-        this.totalTyped += 1;
-        if (inputLetter === correctLetter) {
-          this.correctTyped += 1;
-          this.correctIndex += 1;
-
-          // 如果所有字母都输入正确，重新生成一排字母
-          if (this.correctIndex === this.letters.length) {
-            this.generateLetters();
-          }
-        } else {
-          this.errors += 1;
-        }
+    toggleTag(tag) {
+      const index = this.selectedTags.indexOf(tag)
+      if (index >= 0) {
+        this.selectedTags.splice(index, 1)
+      } else {
+        this.selectedTags.push(tag)
       }
-    },
-    restartGame() {
-      this.gameOver = false;
-      this.timeLeft = 10;
-      this.errors = 0;
-      this.totalTyped = 0;
-      this.correctTyped = 0;
-      this.generateLetters();
-      clearInterval(this.timer);
-      this.startGame();
-    },
-  },
-  mounted() {
-    this.startGame();
-    window.addEventListener('keydown', this.handleKeyInput);
-  },
-  beforeDestroy() {
-    window.removeEventListener('keydown', this.handleKeyInput);
-    clearInterval(this.timer);
-  },
-};
+    }
+  }
+}
 </script>
 
 <style scoped>
-.game-container {
-  text-align: center;
+.app-container {
+  padding: 20px;
   font-family: Arial, sans-serif;
 }
-.timer {
-  font-size: 24px;
-  margin-top: 20px;
+
+.top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
-.letter-container {
-  font-size: 48px;
-  margin-top: 40px;
+
+.logo-area {
+  display: flex;
+  align-items: center;
 }
-.correct {
-  color: green;
+
+.logo {
+  height: 32px;
+  margin-right: 10px;
 }
-.current {
-  color: blue;
+
+.logo-text {
+  font-size: 20px;
+  color: #007bff;
+  font-weight: bold;
 }
-.stats {
-  margin-top: 30px;
+
+.control-area {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
-.game-over {
-  font-size: 36px;
-  color: red;
-  margin-top: 20px;
+
+.search-input {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
-.restart-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  font-size: 18px;
-  background-color: #4caf50;
+
+.sort-select {
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.tag-button {
+  background-color: #f60;
   color: white;
   border: none;
-  border-radius: 5px;
+  padding: 6px 12px;
+  border-radius: 4px;
   cursor: pointer;
 }
-.restart-button:hover {
-  background-color: #45a049;
+
+.tag-button:hover {
+  background-color: #e55200;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tag {
+  padding: 6px 12px;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  background-color: white;
+  color: #007bff;
+  cursor: pointer;
+}
+
+.tag.selected {
+  background-color: #007bff;
+  color: white;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.image-item {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+}
+
+.image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>
