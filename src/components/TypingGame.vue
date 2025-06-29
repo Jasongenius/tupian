@@ -152,8 +152,7 @@ export default {
 
 <style scoped>
 .app-container {
-  padding: 20px;
-  font-family: Arial, sans-serif;
+
 }
 
 .top-bar {
